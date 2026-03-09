@@ -1,46 +1,54 @@
 import streamlit as st
 import PyPDF2
-# ... (seus outros imports)
+import requests
+import re
+import google.generativeai as genai
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from deep_translator import GoogleTranslator
 
-# --- CONFIGURAÇÃO DA PÁGINA ---
+# --- CONFIGURAÇÕES DE INTERFACE ---
 st.set_page_config(page_title="JobHunter Pro - Remote Edition", layout="wide", page_icon="🏠")
 
-# --- BARRA LATERAL: CONFIGURAÇÃO DE CHAVES ---
+# --- CONFIGURAÇÃO DA SIDEBAR PARA AS CHAVES ---
 with st.sidebar:
     st.header("🔑 Configuração de Acesso")
+    st.caption("Insira suas chaves para ativar as buscas e a IA.")
+    
+    # Inputs para chaves de usuário
     user_gemini_key = st.text_input("Gemini API Key", type="password", help="Pegue em: aistudio.google.com")
     user_serpapi_key = st.text_input("SerpApi Key", type="password", help="Pegue em: serpapi.com")
     
+    # Lógica de Prioridade: Input do Usuário > Secrets do Streamlit
     GEMINI_API_KEY = user_gemini_key if user_gemini_key else st.secrets.get("GEMINI_API_KEY")
     SERPAPI_KEY = user_serpapi_key if user_serpapi_key else st.secrets.get("SERPAPI_KEY")
+    
     st.divider()
 
-# --- MENSAGEM DE BOAS-VINDAS E AVISO ---
-# Se as chaves não estiverem preenchidas, mostramos o aviso grande na tela principal
+# --- BLOQUEIO DE SEGURANÇA E MENSAGEM INICIAL ---
 if not GEMINI_API_KEY or not SERPAPI_KEY:
     st.title("🎯 JobHunter Pro - Remote Edition")
-    
-    # Criando uma caixa de destaque para as instruções
     with st.container(border=True):
-        st.subheader("🚀 Bem-vindo! Siga os passos para ativar o app:")
+        st.subheader("🚀 Bem-vindo! Ative o app para começar:")
         st.markdown("""
-        Para encontrar vagas e analisar seu currículo com IA, você precisa de duas chaves gratuitas:
+        Este buscador utiliza IA para analisar seu currículo e encontrar vagas remotas. 
+        Para começar, insira suas chaves na **barra lateral à esquerda**.
         
-        1. **Insira as chaves na Barra Lateral à esquerda** (clique na seta **>** se estiver no celular).
-        2. **Gemini Key:** Gere no [Google AI Studio](https://aistudio.google.com/).
-        3. **SerpApi Key:** Gere no [SerpApi](https://serpapi.com/).
+        1. **Gemini Key:** Gerada no Google AI Studio.
+        2. **SerpApi Key:** Gerada no SerpApi.
         
-        *Assim que você inserir, as funcionalidades serão liberadas automaticamente.*
+        *Se estiver no celular, clique na seta **( > )** no topo esquerdo para abrir o menu.*
         """)
-    st.stop() # Para o app aqui até as chaves serem inseridas
+    st.stop()
 else:
+    # Configuração do Motor de IA
     try:
         genai.configure(api_key=GEMINI_API_KEY)
     except Exception as e:
         st.error(f"Erro na configuração da IA: {e}")
         st.stop()
 
-# --- FUNÇÕES AUXILIARES (Limpador, Tradutor) ---
+# --- FUNÇÕES AUXILIARES ---
 def limpar_texto(texto):
     if not texto: return ""
     texto = str(texto).lower()
@@ -54,10 +62,44 @@ def traduzir_para_ingles(texto):
         return GoogleTranslator(source='pt', target='en').translate(texto[:2500])
     except: return texto
 
-# --- CORPO PRINCIPAL DO APP ---
+# --- ESTADO DA SESSÃO ---
+if 'vagas' not in st.session_state: st.session_state.vagas = []
+if 'favoritos' not in st.session_state: st.session_state.favoritos = []
+
+# --- INTERFACE: FILTROS NA SIDEBAR ---
+with st.sidebar:
+    st.header("🏠 Filtros Home Office")
+    arquivo_pdf = st.file_uploader("1. Seu currículo (PDF)", type=["pdf"])
+    area_pesquisa = st.text_input("2. Área da vaga:", placeholder="Ex: Desenvolvedor Python")
+    nivel_vaga = st.text_input("3. Nível:", placeholder="Ex: Júnior")
+    localidade = st.text_input("4. Localidade de busca:", value="Brasil")
+    
+    st.divider()
+    st.subheader("🕒 Recência")
+    opcoes_data = {
+        "Qualquer data": "",
+        "Últimas 24 horas": "today",
+        "Últimos 3 dias": "3days",
+        "Última semana": "week",
+        "Último mês": "month"
+    }
+    filtro_data = st.selectbox("Mostrar vagas de:", list(opcoes_data.keys()))
+
+    if st.session_state.favoritos:
+        st.divider()
+        st.subheader("⭐ Vagas Salvas")
+        for fav in st.session_state.favoritos:
+            st.caption(f"📌 {fav['titulo']} (@{fav['empresa']})")
+        
+        if st.button("Limpar Histórico", use_container_width=True):
+            st.session_state.favoritos = []
+            st.rerun()
+
+# --- CORPO PRINCIPAL ---
 st.title("🎯 JobHunter Pro - Remote Edition")
 st.info("Este buscador está configurado para encontrar exclusivamente vagas **Home Office**.")
 
+# Centralização do botão usando suas colunas originais
 col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
     if st.button("🚀 BUSCAR VAGAS REMOTAS", use_container_width=True):
@@ -71,6 +113,7 @@ with col2:
                     query = f"{area_pesquisa} {nivel_vaga} remoto {localidade}".strip()
                     param_data = opcoes_data[filtro_data]
                     
+                    # URL com a chave dinâmica (usuário ou secreta)
                     url_serp = f"https://serpapi.com/search.json?engine=google_jobs&q={query}&hl=pt&gl=br&ltype=1&chips=date_posted:{param_data}&api_key={SERPAPI_KEY}"
                     
                     res = requests.get(url_serp, timeout=15).json()
@@ -117,6 +160,6 @@ if st.session_state.vagas:
                         st.session_state.favoritos.append(vaga)
                         st.toast(f"Vaga salva!")
                         st.rerun()
+
 elif arquivo_pdf:
     st.info("Aguardando busca.")
-
