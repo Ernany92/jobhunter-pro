@@ -1,88 +1,38 @@
 import streamlit as st
 import PyPDF2
-import requests
-import re
-import google.generativeai as genai
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from deep_translator import GoogleTranslator
+# ... (seus outros imports)
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="JobHunter Pro - Remote Edition", layout="wide", page_icon="🏠")
 
-# --- FUNÇÃO DO POP-UP INICIAL (MODAL) ---
-@st.dialog("🚀 Bem-vindo ao JobHunter Pro!")
-def mensagem_inicial():
-    st.markdown("""
-    Este buscador utiliza Inteligência Artificial e dados em tempo real para encontrar sua vaga ideal.
-    
-    **⚠️ Importante:**
-    Para que o app funcione, você precisa configurar suas chaves de API na **barra lateral esquerda**.
-    
-    1. **Gemini Key:** Para análise do currículo.
-    2. **SerpApi Key:** Para busca de vagas no Google.
-    
-    *Se estiver no celular, clique na seta **( > )** no topo esquerdo para abrir o menu.*
-    """)
-    if st.button("Entendi!", use_container_width=True):
-        st.session_state.avisado = True
-        st.rerun()
-
-# Controla a exibição da mensagem inicial apenas uma vez por sessão
-if 'avisado' not in st.session_state:
-    mensagem_inicial()
-
-# --- ESTADO DA SESSÃO (Para não perder dados ao interagir) ---
-if 'vagas' not in st.session_state: st.session_state.vagas = []
-if 'favoritos' not in st.session_state: st.session_state.favoritos = []
-
-# --- BARRA LATERAL: CONFIGURAÇÃO E FILTROS ---
+# --- BARRA LATERAL: CONFIGURAÇÃO DE CHAVES ---
 with st.sidebar:
     st.header("🔑 Configuração de Acesso")
-    st.caption("Suas chaves não são salvas, rodam apenas na sua sessão.")
-    
-    # Inputs para chaves do usuário
     user_gemini_key = st.text_input("Gemini API Key", type="password", help="Pegue em: aistudio.google.com")
     user_serpapi_key = st.text_input("SerpApi Key", type="password", help="Pegue em: serpapi.com")
     
-    # Lógica de Prioridade: Input do Usuário > Secrets do Streamlit
     GEMINI_API_KEY = user_gemini_key if user_gemini_key else st.secrets.get("GEMINI_API_KEY")
     SERPAPI_KEY = user_serpapi_key if user_serpapi_key else st.secrets.get("SERPAPI_KEY")
-    
     st.divider()
-    
-    st.header("🏠 Filtros Home Office")
-    arquivo_pdf = st.file_uploader("1. Seu currículo (PDF)", type=["pdf"])
-    area_pesquisa = st.text_input("2. Área da vaga:", placeholder="Ex: Desenvolvedor Python")
-    nivel_vaga = st.text_input("3. Nível:", placeholder="Ex: Júnior")
-    localidade = st.text_input("4. Localidade de busca:", value="Brasil")
-    
-    st.divider()
-    st.subheader("🕒 Recência")
-    opcoes_data = {
-        "Qualquer data": "",
-        "Últimas 24 horas": "today",
-        "Últimos 3 dias": "3days",
-        "Última semana": "week",
-        "Último mês": "month"
-    }
-    filtro_data = st.selectbox("Mostrar vagas de:", list(opcoes_data.keys()))
 
-    if st.session_state.favoritos:
-        st.divider()
-        st.subheader("⭐ Vagas Salvas")
-        for fav in st.session_state.favoritos:
-            st.caption(f"📌 {fav['titulo']} (@{fav['empresa']})")
-        
-        if st.button("Limpar Histórico", use_container_width=True):
-            st.session_state.favoritos = []
-            st.rerun()
-
-# --- BLOQUEIO DE SEGURANÇA ---
+# --- MENSAGEM DE BOAS-VINDAS E AVISO ---
+# Se as chaves não estiverem preenchidas, mostramos o aviso grande na tela principal
 if not GEMINI_API_KEY or not SERPAPI_KEY:
     st.title("🎯 JobHunter Pro - Remote Edition")
-    st.warning("👈 **Ação Necessária:** Por favor, insira suas chaves de API na barra lateral esquerda para começar.")
-    st.stop()
+    
+    # Criando uma caixa de destaque para as instruções
+    with st.container(border=True):
+        st.subheader("🚀 Bem-vindo! Siga os passos para ativar o app:")
+        st.markdown("""
+        Para encontrar vagas e analisar seu currículo com IA, você precisa de duas chaves gratuitas:
+        
+        1. **Insira as chaves na Barra Lateral à esquerda** (clique na seta **>** se estiver no celular).
+        2. **Gemini Key:** Gere no [Google AI Studio](https://aistudio.google.com/).
+        3. **SerpApi Key:** Gere no [SerpApi](https://serpapi.com/).
+        
+        *Assim que você inserir, as funcionalidades serão liberadas automaticamente.*
+        """)
+    st.stop() # Para o app aqui até as chaves serem inseridas
 else:
     try:
         genai.configure(api_key=GEMINI_API_KEY)
@@ -169,3 +119,4 @@ if st.session_state.vagas:
                         st.rerun()
 elif arquivo_pdf:
     st.info("Aguardando busca.")
+
