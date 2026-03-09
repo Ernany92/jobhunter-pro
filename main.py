@@ -7,16 +7,44 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from deep_translator import GoogleTranslator
 
-# --- CONFIGURAÇÕES DE SEGURANÇA (SECRETS) ---
-# O Streamlit buscará estas chaves no painel "Settings > Secrets" que você abriu
-try:
-    SERPAPI_KEY = st.secrets["SERPAPI_KEY"]
-    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
-    genai.configure(api_key=GEMINI_API_KEY)
-except Exception:
-    st.error("⚠️ Chaves de API não encontradas! Vá em Settings > Secrets e adicione SERPAPI_KEY e GEMINI_API_KEY.")
-    st.stop()
+# --- INTERFACE STREAMLIT (Configuração Inicial) ---
+st.set_page_config(page_title="JobHunter Pro - Remote Edition", layout="wide", page_icon="🏠")
 
+# --- BARRA LATERAL: CONFIGURAÇÃO DE CHAVES ---
+with st.sidebar:
+    st.header("🔑 Configuração de Acesso")
+    st.markdown("Para garantir o funcionamento, insira suas chaves de API abaixo:")
+    
+    # Inputs para chaves de usuário (tipo password para ocultar o texto)
+    user_gemini_key = st.text_input("Gemini API Key", type="password", help="Obtenha em: aistudio.google.com")
+    user_serpapi_key = st.text_input("SerpApi Key", type="password", help="Obtenha em: serpapi.com")
+    
+    # Lógica de Prioridade: 1º Input do Usuário | 2º Secrets do Streamlit
+    GEMINI_API_KEY = user_gemini_key if user_gemini_key else st.secrets.get("GEMINI_API_KEY")
+    SERPAPI_KEY = user_serpapi_key if user_serpapi_key else st.secrets.get("SERPAPI_KEY")
+
+    st.divider()
+
+# --- BLOQUEIO DE SEGURANÇA ---
+# Se não houver chaves, o app para aqui e solicita ao usuário
+if not GEMINI_API_KEY or not SERPAPI_KEY:
+    st.title("🎯 JobHunter Pro - Remote Edition")
+    st.warning("👈 **Ação Necessária:** Por favor, insira suas chaves de API na barra lateral esquerda para começar.")
+    st.info("""
+    Este buscador utiliza APIs externas para encontrar vagas e analisar currículos. 
+    1. **Gemini Key:** Necessária para a Inteligência Artificial.
+    2. **SerpApi Key:** Necessária para buscar vagas no Google Jobs.
+    """)
+    st.stop()
+else:
+    # Configura o Gemini se a chave existir
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+    except Exception as e:
+        st.error(f"Erro ao configurar Google Gemini: {e}")
+        st.stop()
+
+# --- FUNÇÕES AUXILIARES ---
 def limpar_texto(texto):
     if not texto: return ""
     texto = str(texto).lower()
@@ -30,12 +58,11 @@ def traduzir_para_ingles(texto):
         return GoogleTranslator(source='pt', target='en').translate(texto[:2500])
     except: return texto
 
-# --- INTERFACE STREAMLIT ---
-st.set_page_config(page_title="JobHunter Pro - Remote Edition", layout="wide", page_icon="🏠")
-
+# --- ESTADO DA SESSÃO ---
 if 'vagas' not in st.session_state: st.session_state.vagas = []
 if 'favoritos' not in st.session_state: st.session_state.favoritos = []
 
+# --- INTERFACE: CONTINUAÇÃO DA SIDEBAR (Filtros) ---
 with st.sidebar:
     st.header("🏠 Filtros Home Office")
     arquivo_pdf = st.file_uploader("1. Seu currículo (PDF)", type=["pdf"])
@@ -54,12 +81,11 @@ with st.sidebar:
     }
     filtro_data = st.selectbox("Mostrar vagas de:", list(opcoes_data.keys()))
 
-    st.divider()
     if st.session_state.favoritos:
+        st.divider()
         st.subheader("⭐ Vagas Salvas")
         for fav in st.session_state.favoritos:
             st.caption(f"📌 {fav['titulo']} (@{fav['empresa']})")
-        
         if st.button("Limpar Histórico", use_container_width=True):
             st.session_state.favoritos = []
             st.rerun()
@@ -78,11 +104,10 @@ with col2:
                 curr_en = traduzir_para_ingles(limpar_texto(texto_curriculo))
 
                 try:
-                    # Forçando 'remoto' na query e ltype=1 na API para garantir Home Office
                     query = f"{area_pesquisa} {nivel_vaga} remoto {localidade}".strip()
                     param_data = opcoes_data[filtro_data]
                     
-                    # ltype=1 ativa o filtro de 'Work from home' do Google Jobs
+                    # Uso da variável SERPAPI_KEY (que pode ser a do usuário ou a do Secret)
                     url_serp = f"https://serpapi.com/search.json?engine=google_jobs&q={query}&hl=pt&gl=br&ltype=1&chips=date_posted:{param_data}&api_key={SERPAPI_KEY}"
                     
                     res = requests.get(url_serp, timeout=15).json()
