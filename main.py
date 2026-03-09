@@ -13,7 +13,7 @@ st.set_page_config(page_title="JobHunter Pro - Remote Edition", layout="wide", p
 # --- BARRA LATERAL: CONFIGURAÇÃO DE CHAVES ---
 with st.sidebar:
     st.header("🔑 Configuração de Acesso")
-    st.caption("Insira suas chaves para ativar as buscas e a IA.")
+    st.caption("Insira suas chaves API para ativar o buscador.")
     
     user_gemini_key = st.text_input("Gemini API Key", type="password", help="Pegue em: aistudio.google.com")
     user_serpapi_key = st.text_input("SerpApi Key", type="password", help="Pegue em: serpapi.com")
@@ -163,3 +163,4 @@ if st.session_state.vagas:
 
 elif arquivo_pdf:
     st.info("Aguardando busca.")
+
