@@ -21,6 +21,18 @@ O **JobHunter Pro** é um buscador inteligente focado em oportunidades **Home Of
 * **SerpApi** (Motor de busca de vagas)
 * **Scikit-Learn** (Cálculo de similaridade)
 
+## 🔑 Como usar o App (API Keys)
+
+Para garantir que o serviço esteja sempre disponível e proteger os limites de uso, o **JobHunter Pro** permite que você utilize suas próprias chaves de API. 
+
+**Como configurar no App:**
+1. No menu lateral esquerdo (seta no topo), você encontrará o campo **"Configuração de Acesso"**.
+2. Insira suas chaves:
+   * **Gemini API Key:** Obtenha gratuitamente no [Google AI Studio](https://aistudio.google.com/).
+   * **SerpApi Key:** Obtenha no [SerpApi](https://serpapi.com/) (permite buscas no Google Jobs).
+3. Após inserir, o app será "destravado" e você poderá realizar suas buscas normalmente.
+
+> *Suas chaves não são armazenadas pelo sistema; elas permanecem ativas apenas durante a sua sessão de uso.*
 
 
 👤 Autor
