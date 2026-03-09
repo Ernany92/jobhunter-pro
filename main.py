@@ -59,8 +59,7 @@ with st.sidebar:
     area_pesquisa = st.text_input("2. Área da vaga:", placeholder="Ex: Desenvolvedor Python")
     nivel_vaga = st.text_input("3. Nível:", placeholder="Ex: Júnior")
     
-    # Ajuste na Localidade: Aceita Cidade, Estado ou País
-    localidade = st.text_input("4. Localidade (Cidade, Estado ou País):", value="Brasil", help="Ex: Porto Alegre, São Paulo, EUA, Canada")
+    localidade = st.text_input("4. Localidade (Cidade, Estado ou País):", value="Brasil", help="Ex: Porto Alegre, EUA, Canada, Uruguay")
     
     st.divider()
     st.subheader("🕒 Recência")
@@ -84,30 +83,35 @@ with st.sidebar:
             st.rerun()
 
 st.title("🎯 JobHunter Pro - Remote Edition")
-st.info("Este buscador foca em vagas **Home Office** na localidade escolhida.")
+st.info("Buscando vagas **Remote** em qualquer lugar do mundo.")
 
 # --- LÓGICA DE BUSCA ---
 col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
     if st.button("🚀 BUSCAR VAGAS REMOTAS", use_container_width=True):
         if arquivo_pdf and area_pesquisa:
-            with st.spinner('Buscando oportunidades...'):
+            with st.spinner('Buscando oportunidades globais...'):
                 leitor = PyPDF2.PdfReader(arquivo_pdf)
                 texto_curriculo = "".join([p.extract_text() for p in leitor.pages])
                 curr_en = traduzir_para_ingles(limpar_texto(texto_curriculo))
 
                 try:
-                    # Query aprimorada: Otimizamos a string de busca
-                    # O parâmetro 'location' na URL da SerpApi cuida da filtragem geográfica
                     search_query = f"{area_pesquisa} {nivel_vaga} remote".strip()
                     param_data = opcoes_data[filtro_data]
                     
-                    # ltype=1 (Work from home) + location (Sua cidade/país)
+                    # --- AJUSTE GLOBAL ---
+                    # Se não for Brasil, usamos o Google Global (sem travar gl=br)
+                    pais_busca = localidade.lower().strip()
+                    google_domain = "google.com.br" if "brasil" in pais_busca or "brazil" in pais_busca else "google.com"
+                    gl_param = "br" if "brasil" in pais_busca or "brazil" in pais_busca else "us" # 'us' serve como padrão global
+                    
                     url_serp = (
                         f"https://serpapi.com/search.json?engine=google_jobs"
                         f"&q={search_query}"
                         f"&location={localidade}"
-                        f"&hl=pt&gl=br&ltype=1"
+                        f"&google_domain={google_domain}"
+                        f"&gl={gl_param}"
+                        f"&ltype=1"
                         f"&chips=date_posted:{param_data}"
                         f"&api_key={SERPAPI_KEY}"
                     )
@@ -133,7 +137,7 @@ with col2:
                         
                         st.session_state.vagas = sorted(vagas_brutas, key=lambda x: x.get('nota', 0), reverse=True)[:15]
                     else:
-                        st.warning(f"Nenhuma vaga remota encontrada em '{localidade}'.")
+                        st.warning(f"Nenhuma vaga remota encontrada para '{localidade}'.")
                 except Exception as e: 
                     st.error(f"Erro na busca: {e}")
         else:
@@ -141,7 +145,7 @@ with col2:
 
 # --- EXIBIÇÃO ---
 if st.session_state.vagas:
-    st.subheader(f"💼 Vagas Home Office em {localidade}")
+    st.subheader(f"💼 Resultados para: {localidade}")
     for i, vaga in enumerate(st.session_state.vagas):
         with st.expander(f"⭐ {vaga.get('nota', 0)}% Match - {vaga['titulo']} (@ {vaga['empresa']})"):
             st.write(f"🏢 **Empresa:** {vaga['empresa']} | 📅 **Postada:** {vaga['data']}")
