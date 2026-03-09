@@ -2,12 +2,20 @@ import streamlit as st
 import PyPDF2
 import requests
 import re
+import google.generativeai as genai
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from deep_translator import GoogleTranslator
 
-# --- CONFIGURAÇÕES ---
-SERPAPI_KEY = "943b15023a992ff4f9a5f8b04b7e6ed9629f151e9fc82f81d2639a2476c257cf"
+# --- CONFIGURAÇÕES DE SEGURANÇA (SECRETS) ---
+# O Streamlit buscará estas chaves no painel "Settings > Secrets" que você abriu
+try:
+    SERPAPI_KEY = st.secrets["SERPAPI_KEY"]
+    GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
+    genai.configure(api_key=GEMINI_API_KEY)
+except Exception:
+    st.error("⚠️ Chaves de API não encontradas! Vá em Settings > Secrets e adicione SERPAPI_KEY e GEMINI_API_KEY.")
+    st.stop()
 
 def limpar_texto(texto):
     if not texto: return ""
@@ -99,7 +107,8 @@ with col2:
                         st.session_state.vagas = sorted(vagas_brutas, key=lambda x: x.get('nota', 0), reverse=True)[:15]
                     else:
                         st.warning("Nenhuma vaga remota encontrada para estes termos.")
-                except: st.error("Erro na busca.")
+                except Exception as e: 
+                    st.error(f"Erro na busca: {e}")
         else:
             st.warning("Carregue o PDF e preencha a área da vaga.")
 
