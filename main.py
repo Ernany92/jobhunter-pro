@@ -10,34 +10,32 @@ from deep_translator import GoogleTranslator
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(page_title="JobHunter Pro - Remote Edition", layout="wide", page_icon="🏠")
 
-# --- BARRA LATERAL: CONFIGURAÇÃO DE CHAVES (ADICIONADO) ---
+# --- BARRA LATERAL: CONFIGURAÇÃO DE CHAVES ---
 with st.sidebar:
     st.header("🔑 Configuração de Acesso")
     st.caption("Insira suas chaves para ativar as buscas e a IA.")
     
-    # Inputs para chaves de usuário
     user_gemini_key = st.text_input("Gemini API Key", type="password", help="Pegue em: aistudio.google.com")
     user_serpapi_key = st.text_input("SerpApi Key", type="password", help="Pegue em: serpapi.com")
     
-    # Lógica: Usa o input do usuário. Se estiver vazio, tenta o Secrets.
     GEMINI_API_KEY = user_gemini_key if user_gemini_key else st.secrets.get("GEMINI_API_KEY")
     SERPAPI_KEY = user_serpapi_key if user_serpapi_key else st.secrets.get("SERPAPI_KEY")
     
     st.divider()
 
-# --- VALIDAÇÃO DAS CHAVES (BLOQUEIO) ---
+# --- VALIDAÇÃO DAS CHAVES ---
 if not GEMINI_API_KEY or not SERPAPI_KEY:
     st.title("🎯 JobHunter Pro - Remote Edition")
-    st.warning("⚠️ **Ação Necessária:** Por favor, insira suas chaves de API (Gemini e SerpApi) na barra lateral esquerda para começar.")
+    st.warning("⚠️ **Ação Necessária:** Por favor, insira suas chaves de API na barra lateral esquerda para começar.")
     st.stop()
 else:
-    # Configuração do genai (Original)
     try:
         genai.configure(api_key=GEMINI_API_KEY)
     except Exception as e:
         st.error(f"Erro na configuração da IA: {e}")
         st.stop()
 
+# --- FUNÇÕES AUXILIARES ---
 def limpar_texto(texto):
     if not texto: return ""
     texto = str(texto).lower()
@@ -60,7 +58,9 @@ with st.sidebar:
     arquivo_pdf = st.file_uploader("1. Seu currículo (PDF)", type=["pdf"])
     area_pesquisa = st.text_input("2. Área da vaga:", placeholder="Ex: Desenvolvedor Python")
     nivel_vaga = st.text_input("3. Nível:", placeholder="Ex: Júnior")
-    localidade = st.text_input("4. Localidade de busca:", value="Brasil")
+    
+    # Ajuste na Localidade: Aceita Cidade, Estado ou País
+    localidade = st.text_input("4. Localidade (Cidade, Estado ou País):", value="Brasil", help="Ex: Porto Alegre, São Paulo, EUA, Canada")
     
     st.divider()
     st.subheader("🕒 Recência")
@@ -84,24 +84,33 @@ with st.sidebar:
             st.rerun()
 
 st.title("🎯 JobHunter Pro - Remote Edition")
-st.info("Este buscador está configurado para encontrar exclusivamente vagas **Home Office**.")
+st.info("Este buscador foca em vagas **Home Office** na localidade escolhida.")
 
-# --- LÓGICA DE BUSCA (Original com Colunas) ---
+# --- LÓGICA DE BUSCA ---
 col1, col2, col3 = st.columns([1, 1, 1])
 with col2:
     if st.button("🚀 BUSCAR VAGAS REMOTAS", use_container_width=True):
         if arquivo_pdf and area_pesquisa:
-            with st.spinner('Filtrando oportunidades remotas...'):
+            with st.spinner('Buscando oportunidades...'):
                 leitor = PyPDF2.PdfReader(arquivo_pdf)
                 texto_curriculo = "".join([p.extract_text() for p in leitor.pages])
                 curr_en = traduzir_para_ingles(limpar_texto(texto_curriculo))
 
                 try:
-                    query = f"{area_pesquisa} {nivel_vaga} remoto {localidade}".strip()
+                    # Query aprimorada: Otimizamos a string de busca
+                    # O parâmetro 'location' na URL da SerpApi cuida da filtragem geográfica
+                    search_query = f"{area_pesquisa} {nivel_vaga} remote".strip()
                     param_data = opcoes_data[filtro_data]
                     
-                    # URL usando a SERPAPI_KEY dinâmica
-                    url_serp = f"https://serpapi.com/search.json?engine=google_jobs&q={query}&hl=pt&gl=br&ltype=1&chips=date_posted:{param_data}&api_key={SERPAPI_KEY}"
+                    # ltype=1 (Work from home) + location (Sua cidade/país)
+                    url_serp = (
+                        f"https://serpapi.com/search.json?engine=google_jobs"
+                        f"&q={search_query}"
+                        f"&location={localidade}"
+                        f"&hl=pt&gl=br&ltype=1"
+                        f"&chips=date_posted:{param_data}"
+                        f"&api_key={SERPAPI_KEY}"
+                    )
                     
                     res = requests.get(url_serp, timeout=15).json()
                     vagas_brutas = []
@@ -124,7 +133,7 @@ with col2:
                         
                         st.session_state.vagas = sorted(vagas_brutas, key=lambda x: x.get('nota', 0), reverse=True)[:15]
                     else:
-                        st.warning("Nenhuma vaga remota encontrada para estes termos.")
+                        st.warning(f"Nenhuma vaga remota encontrada em '{localidade}'.")
                 except Exception as e: 
                     st.error(f"Erro na busca: {e}")
         else:
@@ -132,7 +141,7 @@ with col2:
 
 # --- EXIBIÇÃO ---
 if st.session_state.vagas:
-    st.subheader("💼 Vagas Home Office Encontradas")
+    st.subheader(f"💼 Vagas Home Office em {localidade}")
     for i, vaga in enumerate(st.session_state.vagas):
         with st.expander(f"⭐ {vaga.get('nota', 0)}% Match - {vaga['titulo']} (@ {vaga['empresa']})"):
             st.write(f"🏢 **Empresa:** {vaga['empresa']} | 📅 **Postada:** {vaga['data']}")
