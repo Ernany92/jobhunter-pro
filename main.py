@@ -5,8 +5,14 @@ import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# --- IMPORTAÇÃO COMPATÍVEL COM O SEU GOOGLE-GENERATIVEAI ---
-import google.generativeai as genai
+# Tenta importar o SDK moderno do Gemini (Padrão 2026)
+try:
+    from google import genai
+except ImportError:
+    try:
+        import google.genai as genai
+    except:
+        genai = None
 
 # --- CONFIGURAÇÃO INICIAL ---
 st.set_page_config(page_title="JobHunter Pro - Remote Edition", layout="wide", page_icon="🏠")
@@ -55,11 +61,13 @@ if not GEMINI_API_KEY or not SERPAPI_KEY:
     st.warning("👈 **Ação Necessária:** Por favor, insira suas chaves de API na barra lateral esquerda.")
     st.stop()
 
-# --- CONFIGURAÇÃO DA API KEY NO SDK TRADICIONAL ---
-try:
-    genai.configure(api_key=GEMINI_API_KEY)
-except Exception as e:
-    st.sidebar.error(f"Erro ao configurar chave do Gemini: {e}")
+# --- INICIALIZAÇÃO DO CLIENTE GEMINI (SDK 2026) ---
+client = None
+if genai and GEMINI_API_KEY:
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+    except Exception as e:
+        st.sidebar.error(f"Erro ao iniciar cliente Gemini: {e}")
 
 # --- FUNÇÃO DE LIMPEZA ---
 def limpar_texto(texto):
@@ -68,8 +76,11 @@ def limpar_texto(texto):
     texto = re.sub(r'[^a-záéíóúçãõ0-9\s]', ' ', texto)
     return re.sub(r'\s+', ' ', texto).strip()
 
-# --- FUNÇÃO DE ANÁLISE SEMÂNTICA (SDK google-generativeai) ---
+# --- FUNÇÃO PARA ANÁLISE SEMÂNTICA DO GEMINI ---
 def analisar_vaga_com_gemini(curriculo, descricao_vaga):
+    if not client:
+        return "⚠️ SDK do Gemini ou API Key não configurados corretamente."
+    
     prompt = f"""
     Você é um recrutador técnico especialista em tecnologia.
     Analise o Currículo fornecido contra a Descrição da Vaga abaixo.
@@ -90,9 +101,10 @@ def analisar_vaga_com_gemini(curriculo, descricao_vaga):
     Seja focado em tech, direto ao ponto e evite introduções longas.
     """
     try:
-        # Usa a chamada tradicional do GenerativeModel compatível com o seu pacote
-        model = genai.GenerativeModel("gemini-1.5-flash")
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',  # Utilizando o modelo flash atualizado e rápido
+            contents=prompt
+        )
         return response.text
     except Exception as e:
         return f"❌ Erro ao gerar análise com a IA: {e}"
@@ -100,6 +112,7 @@ def analisar_vaga_com_gemini(curriculo, descricao_vaga):
 # --- LÓGICA DE BUSCA ---
 st.title("🎯 JobHunter Pro - Remote Edition")
 
+# Mantemos o texto extraído na sessão para usar na IA sob demanda
 if 'texto_curriculo_raw' not in st.session_state:
     st.session_state.texto_curriculo_raw = ""
 
@@ -175,6 +188,7 @@ if st.session_state.vagas:
             st.divider()
             st.subheader("🧠 Inteligência de Carreira")
             
+            # Ativa o botão de análise do Gemini apenas se o currículo já tiver sido carregado
             if st.session_state.texto_curriculo_raw:
                 if st.button(f"🔍 Gerar Feedback da IA para esta Vaga", key=f"ai_{i}"):
                     with st.spinner("O Gemini está analisando a compatibilidade..."):
