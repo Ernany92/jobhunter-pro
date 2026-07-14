@@ -4,9 +4,8 @@ import requests
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-from deep_translator import GoogleTranslator
 
-# Tenta importar o genai (Padrão 2026)
+# Tenta importar o SDK moderno do Gemini (Padrão 2026)
 try:
     from google import genai
 except ImportError:
@@ -18,11 +17,11 @@ except ImportError:
 # --- CONFIGURAÇÃO INICIAL ---
 st.set_page_config(page_title="JobHunter Pro - Remote Edition", layout="wide", page_icon="🏠")
 
-# --- ESTADO DA SESSÃO (Para não perder os favoritos e as vagas) ---
+# --- ESTADO DA SESSÃO ---
 if 'vagas' not in st.session_state: st.session_state.vagas = []
 if 'favoritos' not in st.session_state: st.session_state.favoritos = []
 
-# --- BARRA LATERAL: CONFIGURAÇÕES E FILTROS ---
+# --- BARRA LATERAL ---
 with st.sidebar:
     st.header("🔑 Configuração de Acesso")
     user_gemini_key = st.text_input("Gemini API Key", type="password")
@@ -62,19 +61,13 @@ if not GEMINI_API_KEY or not SERPAPI_KEY:
     st.warning("👈 **Ação Necessária:** Por favor, insira suas chaves de API na barra lateral esquerda.")
     st.stop()
 
-# --- FUNÇÕES AUXILIARES ---
+# --- FUNÇÃO DE LIMPEZA ---
 def limpar_texto(texto):
     if not texto: return ""
     texto = str(texto).lower()
+    # Mantém letras, números e espaços normais para o processador de TF-IDF
     texto = re.sub(r'[^a-záéíóúçãõ0-9\s]', ' ', texto)
     return re.sub(r'\s+', ' ', texto).strip()
-
-def traduzir_para_ingles(texto):
-    if not texto: return ""
-    try:
-        # Traduz para inglês para melhor performance do TfidfVectorizer (stop_words='english')
-        return GoogleTranslator(source='pt', target='en').translate(texto[:2000])
-    except: return texto
 
 # --- LÓGICA DE BUSCA ---
 st.title("🎯 JobHunter Pro - Remote Edition")
@@ -82,33 +75,49 @@ st.title("🎯 JobHunter Pro - Remote Edition")
 if st.button("🚀 BUSCAR VAGAS REMOTAS", use_container_width=True):
     if arquivo_pdf and area_pesquisa:
         with st.spinner('Analisando currículo e minerando vagas...'):
-            # 1. Processa Currículo
+            # 1. Processa o PDF do Currículo
             leitor = PyPDF2.PdfReader(arquivo_pdf)
             texto_curriculo = "".join([p.extract_text() for p in leitor.pages])
-            curr_en = traduzir_para_ingles(limpar_texto(texto_curriculo))
+            curr_limpo = limpar_texto(texto_curriculo)
 
-            # 2. Busca na SerpApi
+            # 2. Busca na SerpApi com Parâmetros Seguros
             try:
                 query = f"{area_pesquisa} {nivel_vaga} remoto {localidade}".strip()
                 param_data = opcoes_data[filtro_data]
-                url_serp = f"https://serpapi.com/search.json?engine=google_jobs&q={query}&hl=pt&gl=br&ltype=1&chips=date_posted:{param_data}&api_key={SERPAPI_KEY}"
                 
-                res = requests.get(url_serp, timeout=15).json()
+                # Definindo os parâmetros de forma limpa para evitar quebras de URL
+                url_serp = "https://serpapi.com/search.json"
+                params = {
+                    "engine": "google_jobs",
+                    "q": query,
+                    "hl": "pt",
+                    "gl": "br",
+                    "ltype": "1", # Força vagas remotas na SerpApi
+                    "api_key": SERPAPI_KEY
+                }
+                
+                # Adiciona o filtro de data se houver
+                if param_data:
+                    params["chips"] = f"date_posted:{param_data}"
+                
+                res = requests.get(url_serp, params=params, timeout=15).json()
                 vagas_brutas = res.get("jobs_results", [])
                 
                 if vagas_brutas:
                     resultados = []
-                    vetorizador = TfidfVectorizer(stop_words='english')
+                    # Usamos stop_words em português para melhor compatibilidade local
+                    vetorizador = TfidfVectorizer(stop_words=['de', 'a', 'o', 'que', 'e', 'do', 'da', 'em', 'para', 'com'])
                     
                     for v in vagas_brutas:
                         desc_vaga = v.get('description', '')
-                        vaga_en = traduzir_para_ingles(limpar_texto(desc_vaga))
+                        vaga_limpa = limpar_texto(desc_vaga)
                         
-                        # Cálculo de Match
+                        # Cálculo de Match de Similaridade
                         try:
-                            matriz = vetorizador.fit_transform([curr_en, vaga_en])
+                            matriz = vetorizador.fit_transform([curr_limpo, vaga_limpa])
                             nota = round(cosine_similarity(matriz[0:1], matriz[1:2])[0][0] * 100, 1)
-                        except: nota = 0
+                        except Exception as match_err:
+                            nota = 0.0
 
                         resultados.append({
                             "titulo": v.get('title'),
@@ -119,6 +128,7 @@ if st.button("🚀 BUSCAR VAGAS REMOTAS", use_container_width=True):
                             "nota": nota
                         })
                     
+                    # Ordena as vagas por maior match
                     st.session_state.vagas = sorted(resultados, key=lambda x: x['nota'], reverse=True)[:15]
                 else:
                     st.warning("Nenhuma vaga remota encontrada para estes termos.")
