@@ -2,7 +2,7 @@
 
 O JobHunter Pro é um buscador inteligente desenvolvido para otimizar a busca por oportunidades **Home Office**. Através da integração com Inteligência Artificial, a aplicação analisa seu currículo PDF e calcula a compatibilidade real com as vagas encontradas, exibindo um *Match %* em tempo real.
 
-🚀 **[CLIQUE AQUI PARA ACESSAR O APP ONLINE](INSIRA_AQUI_O_LINK_DO_SEU_APP)**
+🚀 **🚀 [CLIQUE AQUI PARA ACESSAR O APP ONLINE](https://jobhunter-pro.streamlit.app/)**
 
 ---
 
