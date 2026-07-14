@@ -5,14 +5,12 @@ import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Tenta importar o SDK moderno do Gemini (Padrão 2026)
+# Importação do novo SDK (conforme seu requirements.txt atualizado)
 try:
     from google import genai
 except ImportError:
-    try:
-        import google.genai as genai
-    except:
-        genai = None
+    st.error("Erro ao importar 'google-genai'. Verifique se a instalação no Streamlit Cloud foi concluída.")
+    genai = None
 
 # --- CONFIGURAÇÃO INICIAL ---
 st.set_page_config(page_title="JobHunter Pro - Remote Edition", layout="wide", page_icon="🏠")
@@ -27,8 +25,9 @@ with st.sidebar:
     user_gemini_key = st.text_input("Gemini API Key", type="password")
     user_serpapi_key = st.text_input("SerpApi Key", type="password")
     
-    GEMINI_API_KEY = user_gemini_key if user_gemini_key else ""
-    SERPAPI_KEY = user_serpapi_key if user_serpapi_key else ""
+    # .strip() remove espaços em branco acidentais no início e fim da string
+    GEMINI_API_KEY = user_gemini_key.strip() if user_gemini_key else ""
+    SERPAPI_KEY = user_serpapi_key.strip() if user_serpapi_key else ""
 
     st.divider()
     st.header("🏠 Filtros Home Office")
@@ -65,6 +64,7 @@ if not GEMINI_API_KEY or not SERPAPI_KEY:
 client = None
 if genai and GEMINI_API_KEY:
     try:
+        # Inicializa o cliente com a chave higienizada
         client = genai.Client(api_key=GEMINI_API_KEY)
     except Exception as e:
         st.sidebar.error(f"Erro ao iniciar cliente Gemini: {e}")
@@ -76,7 +76,7 @@ def limpar_texto(texto):
     texto = re.sub(r'[^a-záéíóúçãõ0-9\s]', ' ', texto)
     return re.sub(r'\s+', ' ', texto).strip()
 
-# --- FUNÇÃO PARA ANÁLISE SEMÂNTICA DO GEMINI ---
+# --- FUNÇÃO PARA ANÁLISE SEMÂNTICA ---
 def analisar_vaga_com_gemini(curriculo, descricao_vaga):
     if not client:
         return "⚠️ SDK do Gemini ou API Key não configurados corretamente."
@@ -102,7 +102,7 @@ def analisar_vaga_com_gemini(curriculo, descricao_vaga):
     """
     try:
         response = client.models.generate_content(
-            model='gemini-2.5-flash',  # Utilizando o modelo flash atualizado e rápido
+            model='gemini-2.5-flash',
             contents=prompt
         )
         return response.text
@@ -112,7 +112,6 @@ def analisar_vaga_com_gemini(curriculo, descricao_vaga):
 # --- LÓGICA DE BUSCA ---
 st.title("🎯 JobHunter Pro - Remote Edition")
 
-# Mantemos o texto extraído na sessão para usar na IA sob demanda
 if 'texto_curriculo_raw' not in st.session_state:
     st.session_state.texto_curriculo_raw = ""
 
@@ -124,7 +123,7 @@ if st.button("🚀 BUSCAR VAGAS REMOTAS", use_container_width=True):
             st.session_state.texto_curriculo_raw = "".join([p.extract_text() for p in leitor.pages])
             curr_limpo = limpar_texto(st.session_state.texto_curriculo_raw)
 
-            # 2. Busca na SerpApi com Parâmetros Seguros
+            # 2. Busca na SerpApi
             try:
                 query = f"{area_pesquisa} {nivel_vaga} remoto {localidade}".strip()
                 param_data = opcoes_data[filtro_data]
@@ -188,7 +187,6 @@ if st.session_state.vagas:
             st.divider()
             st.subheader("🧠 Inteligência de Carreira")
             
-            # Ativa o botão de análise do Gemini apenas se o currículo já tiver sido carregado
             if st.session_state.texto_curriculo_raw:
                 if st.button(f"🔍 Gerar Feedback da IA para esta Vaga", key=f"ai_{i}"):
                     with st.spinner("O Gemini está analisando a compatibilidade..."):
