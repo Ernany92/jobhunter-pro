@@ -1,44 +1,44 @@
-# 🎯 JobHunter Pro - Remote Edition
+# 🎯 JobHunter Pro - Edição Remota
 
-O **JobHunter Pro** é um buscador inteligente focado em oportunidades **Home Office**. Ele utiliza Inteligência Artificial para analisar seu currículo e calcular a compatibilidade com as vagas encontradas através de um Match % em tempo real.
+O JobHunter Pro é um buscador inteligente desenvolvido para otimizar a busca por oportunidades **Home Office**. Através da integração com Inteligência Artificial, a aplicação analisa seu currículo PDF e calcula a compatibilidade real com as vagas encontradas, exibindo um *Match %* em tempo real.
 
-🚀 **[CLIQUE AQUI PARA ACESSAR O APP ONLINE](https://jobhunter-pro.streamlit.app)**
+🚀 **[CLIQUE AQUI PARA ACESSAR O APP ONLINE](INSIRA_AQUI_O_LINK_DO_SEU_APP)**
 
 ---
 
 ## ✨ Funcionalidades
-* **Busca Especializada:** Filtra apenas vagas remotas via Google Jobs.
-* **Match por IA:** Usa o **Google Gemini** para comparar seu perfil com a descrição da vaga.
-* **Tradução:** Traduz descrições de vagas gringas para facilitar a análise.
-* **Segurança:** Chaves de API protegidas e nunca expostas no código (usando Streamlit Secrets).
+
+*   **Busca Especializada:** Filtro inteligente de vagas remotas via Google Jobs.
+*   **Match por IA:** Utiliza o Google Gemini para realizar uma análise semântica profunda, comparando seu perfil profissional com os requisitos da vaga.
+*   **Tradução Automatizada:** Ferramenta integrada para tradução e análise de vagas internacionais, facilitando a candidatura em empresas gringas.
+*   **Segurança em Primeiro Lugar:** As chaves de API não são armazenadas permanentemente; elas permanecem ativas apenas durante sua sessão de uso.
+
+## 🛠️ Tecnologias Utilizadas
+
+*   **Linguagem:** Python
+*   **Interface:** Streamlit
+*   **Inteligência Artificial:** Google Gemini AI (Análise de Match e Feedback)
+*   **Motor de Busca:** SerpApi (Google Jobs API)
+*   **Ciência de Dados:** Scikit-Learn (Cálculo de similaridade de texto)
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
-* **Python** (Linguagem principal)
-* **Streamlit** (Interface Web)
-* **Google Gemini AI** (Cérebro do Match)
-* **SerpApi** (Motor de busca de vagas)
-* **Scikit-Learn** (Cálculo de similaridade)
+## 🔑 Como usar o App
 
-## 🔑 Como usar o App (API Keys)
+Para garantir a autonomia do usuário e respeitar os limites de uso das APIs, o JobHunter Pro permite que você configure suas próprias credenciais:
 
-Para garantir que o serviço esteja sempre disponível e proteger os limites de uso, o **JobHunter Pro** permite que você utilize suas próprias chaves de API. 
+1.  **Acesse o Menu:** No menu lateral esquerdo do aplicativo, clique na seta superior para expandir a aba "Configuração de Acesso".
+2.  **Chave Gemini:** Obtenha sua API Key gratuitamente no [Google AI Studio](https://aistudio.google.com/).
+3.  **Chave SerpApi:** Obtenha sua chave no [SerpApi](https://serpapi.com/) para habilitar as pesquisas no Google Jobs.
+4.  **Uso:** Após inserir as chaves, o campo de busca será desbloqueado. 
 
-**Como configurar no App:**
-1. No menu lateral esquerdo (seta no topo), você encontrará o campo **"Configuração de Acesso"**.
-2. Insira suas chaves:
-   * **Gemini API Key:** Obtenha gratuitamente no [Google AI Studio](https://aistudio.google.com/).
-   * **SerpApi Key:** Obtenha no [SerpApi](https://serpapi.com/) (permite buscas no Google Jobs).
-3. Após inserir, o app será "destravado" e você poderá realizar suas buscas normalmente.
+*Nota: Suas chaves de API são utilizadas apenas localmente e na memória da sessão, não sendo salvas em nenhum banco de dados externo.*
 
-> *Suas chaves não são armazenadas pelo sistema; elas permanecem ativas apenas durante a sua sessão de uso.*
+---
 
+## 👤 Autor
 
-👤 Autor
-Desenvolvido por Ernany Verruck.
+**Ernany Verruck**
+*   **LinkedIn:** [linkedin.com/in/ernanyverruck]
 
-Meu LinkedIn: www.linkedin.com/in/ernanyverruck
-
-
-Este projeto foi desenvolvido com fins educacionais e de auxílio na busca por vagas remotas.
+*Este projeto foi desenvolvido com fins educacionais e de auxílio prático na busca por vagas remotas no setor de tecnologia.*
